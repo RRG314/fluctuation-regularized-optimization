@@ -45,6 +45,7 @@ read [docs/mechanisms.md](docs/mechanisms.md).
 - [Benchmark report](REPORT.md)
 - [Contributing](CONTRIBUTING.md)
 - [Release checklist](docs/release.md)
+- [Draft v0.1.0 release notes](docs/release-notes/v0.1.0.md)
 - [Roadmap](ROADMAP.md)
 - [Changelog](CHANGELOG.md)
 

@@ -15,6 +15,7 @@ keywords = ["optimization", "pinn", "zero-point-regularization", "swarm-optimiza
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
