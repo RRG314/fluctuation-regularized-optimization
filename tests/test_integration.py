@@ -356,8 +356,15 @@ def test_end_to_end_tiny_pinn_smoke():
 
 
 def test_pde_benchmark_pressure_configs_are_labeled_correctly():
-    from benchmarks.pde_benchmark import uses_pressure_balancer
+    import importlib.util
+    from pathlib import Path
 
-    assert not uses_pressure_balancer("adam")
-    assert uses_pressure_balancer("adam+balance")
-    assert uses_pressure_balancer("zero_point+pressure")
+    path = Path(__file__).resolve().parents[1] / "benchmarks" / "pde_benchmark.py"
+    spec = importlib.util.spec_from_file_location("pde_benchmark", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+
+    assert not mod.uses_pressure_balancer("adam")
+    assert mod.uses_pressure_balancer("adam+balance")
+    assert mod.uses_pressure_balancer("zero_point+pressure")
