@@ -1,12 +1,12 @@
 import pytest
 import torch
 
-from casimir_opt import CasimirOptimizer
+from fluctuation_opt import ZeroPointOptimizer
 
 
 def test_converges_on_quadratic():
     p = torch.nn.Parameter(torch.tensor([3.0, -2.0]))
-    opt = CasimirOptimizer([p], lr=0.05, sigma=0.01, seed=0)
+    opt = ZeroPointOptimizer([p], lr=0.05, sigma=0.01, seed=0)
     for _ in range(300):
         opt.step(lambda: (p**2).sum())
     assert float((p.detach()**2).sum()) < 1e-6
@@ -14,7 +14,7 @@ def test_converges_on_quadratic():
 
 def test_trace_mode_converges():
     p = torch.nn.Parameter(torch.tensor([2.0]))
-    opt = CasimirOptimizer([p], lr=0.05, mode="trace", zpe_coeff=1e-2, seed=0)
+    opt = ZeroPointOptimizer([p], lr=0.05, mode="trace", zpe_coeff=1e-2, seed=0)
     for _ in range(200):
         opt.step(lambda: (p**2).sum())
     assert abs(float(p.detach())) < 0.05
@@ -38,10 +38,10 @@ def test_escapes_sharp_minimum_to_flat():
         adam.step()
     assert float(q.detach()) < -0.9
 
-    # Casimir: escapes (all seeds)
+    # Zero-point smoothing: escapes (all seeds)
     for seed in range(3):
         q = torch.nn.Parameter(torch.tensor([-1.02]))
-        opt = CasimirOptimizer([q], lr=0.03, sigma=1.0, n_probes=8,
+        opt = ZeroPointOptimizer([q], lr=0.03, sigma=1.0, n_probes=8,
                                floor_frac=0.1, tau=150, seed=seed)
         for _ in range(800):
             opt.step(lambda: well(q))
@@ -50,7 +50,7 @@ def test_escapes_sharp_minimum_to_flat():
 
 def test_sigma_anneals_but_never_freezes():
     p = torch.nn.Parameter(torch.tensor([0.0]))
-    opt = CasimirOptimizer([p], lr=1e-3, sigma=0.5, floor_frac=0.2, tau=10, seed=0)
+    opt = ZeroPointOptimizer([p], lr=1e-3, sigma=0.5, floor_frac=0.2, tau=10, seed=0)
     s0 = opt.current_sigma()
     for _ in range(200):
         opt.step(lambda: (p**2).sum())
@@ -61,11 +61,11 @@ def test_sigma_anneals_but_never_freezes():
 
 def test_zero_point_energy_diagnostic_orders_flat_below_sharp():
     ps = torch.nn.Parameter(torch.zeros(5))
-    sharp = CasimirOptimizer([ps], seed=0)
+    sharp = ZeroPointOptimizer([ps], seed=0)
     e_sharp = sharp.zero_point_energy(lambda: 50.0 * (ps**2).sum(), s=0.05)
 
     pf = torch.nn.Parameter(torch.zeros(5))
-    flat = CasimirOptimizer([pf], seed=0)
+    flat = ZeroPointOptimizer([pf], seed=0)
     e_flat = flat.zero_point_energy(lambda: 0.5 * (pf**2).sum(), s=0.05)
     assert e_flat < e_sharp
 
@@ -75,7 +75,7 @@ def test_deterministic_with_seed():
     for _ in range(2):
         torch.manual_seed(7)
         p = torch.nn.Parameter(torch.randn(4))
-        opt = CasimirOptimizer([p], lr=0.02, sigma=0.1, seed=123)
+        opt = ZeroPointOptimizer([p], lr=0.02, sigma=0.1, seed=123)
         for _ in range(50):
             opt.step(lambda: ((p - 1.0)**2).sum())
         outs.append(p.detach().clone())
@@ -84,7 +84,7 @@ def test_deterministic_with_seed():
 
 def test_requires_closure():
     p = torch.nn.Parameter(torch.tensor([1.0]))
-    opt = CasimirOptimizer([p])
+    opt = ZeroPointOptimizer([p])
     with pytest.raises(ValueError):
         opt.step(None)
 
@@ -92,7 +92,7 @@ def test_requires_closure():
 def test_invalid_mode_raises():
     p = torch.nn.Parameter(torch.tensor([1.0]))
     with pytest.raises(ValueError):
-        CasimirOptimizer([p], mode="banana")
+        ZeroPointOptimizer([p], mode="banana")
 
 
 def test_trains_small_net():
@@ -101,7 +101,7 @@ def test_trains_small_net():
                               torch.nn.Linear(16, 1))
     X = torch.randn(64, 2)
     y = (X[:, :1] * X[:, 1:]).detach()
-    opt = CasimirOptimizer(net.parameters(), lr=5e-3, sigma=5e-3, seed=0)
+    opt = ZeroPointOptimizer(net.parameters(), lr=5e-3, sigma=5e-3, seed=0)
 
     def closure():
         return ((net(X) - y)**2).mean()

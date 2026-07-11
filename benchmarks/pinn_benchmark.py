@@ -1,4 +1,4 @@
-"""PINN benchmark: Casimir machinery vs plain Adam on a 1D Poisson problem.
+"""PINN benchmark: fluctuation-regularized machinery vs plain Adam on a 1D Poisson problem.
 
 Problem:  -u''(x) = f(x) on (0,1),  u(0) = u(1) = 0
 Exact:    u*(x) = sin(3 pi x) + 0.3 sin(9 pi x)   (multi-frequency: exposes
@@ -7,8 +7,8 @@ Exact:    u*(x) = sin(3 pi x) + 0.3 sin(9 pi x)   (multi-frequency: exposes
 
 Configurations (matched by total gradient evaluations, not steps):
   A. Adam, fixed unit loss weights
-  B. Adam + CasimirPressureBalancer            (pressure-balanced boundaries)
-  C. CasimirOptimizer + CasimirPressureBalancer (vacuum-dressed gradient too)
+  B. Adam + GradientPressureBalancer            (pressure-balanced boundaries)
+  C. ZeroPointOptimizer + GradientPressureBalancer (vacuum-dressed gradient too)
 
 Reports relative L2 error against the exact solution, the zero-point-energy
 (flatness) diagnostic of the found minimum, and robustness of the solution
@@ -30,11 +30,12 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from casimir_opt import (CasimirOptimizer, CasimirPressureBalancer, MLP,  # noqa: E402
+from fluctuation_opt import (ZeroPointOptimizer, GradientPressureBalancer, MLP,  # noqa: E402
                          partial_derivative)
 
 RESULTS = os.path.join(os.path.dirname(__file__), "results")
 os.makedirs(RESULTS, exist_ok=True)
+CSV_PATH = os.path.join(RESULTS, "pinn_results.csv")
 
 
 def u_exact(x):
@@ -93,8 +94,8 @@ def run_config(config, seed, device, budget=9000):
     losses = make_losses(net, x_col, x_bc, device)
 
     balancer = None
-    if config in ("adam+balance", "casimir+balance"):
-        balancer = CasimirPressureBalancer(net.parameters(), n_terms=2,
+    if config in ("adam+balance", "zero_point+pressure"):
+        balancer = GradientPressureBalancer(net.parameters(), n_terms=2,
                                            update_every=25)
 
     def closure():
@@ -118,7 +119,7 @@ def run_config(config, seed, device, budget=9000):
         n_probes = 2  # 1 antithetic pair -> 3 grad evals per step (center + pair)
         evals_per_step = 1 + 2 * ((n_probes + 1) // 2)
         steps = budget // evals_per_step
-        opt = CasimirOptimizer(net.parameters(), lr=2e-3, sigma=5e-3,
+        opt = ZeroPointOptimizer(net.parameters(), lr=2e-3, sigma=5e-3,
                                n_probes=n_probes, floor_frac=0.3,
                                tau=steps / 4, seed=seed)
         for i in range(steps):
@@ -130,7 +131,7 @@ def run_config(config, seed, device, budget=9000):
     err = rel_l2(net, device)
 
     # flatness diagnostics at the found minimum
-    diag_opt = CasimirOptimizer(net.parameters(), seed=0)
+    diag_opt = ZeroPointOptimizer(net.parameters(), seed=0)
     zpe = diag_opt.zero_point_energy(closure, s=0.05, n_probes=4, m=15)
     robust = perturbation_robustness(net, closure, seed=seed)
 
@@ -138,14 +139,61 @@ def run_config(config, seed, device, budget=9000):
             "robustness": robust, "wall_s": wall, "curve": curve, "net": net}
 
 
+def plot_from_results():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    with open(CSV_PATH) as fh:
+        rows = list(csv.DictReader(fh))
+
+    configs = ["adam", "adam+balance", "zero_point+pressure"]
+    colors = {"adam": "#7f7f7f", "adam+balance": "#1f77b4",
+              "zero_point+pressure": "#d62728"}
+    labels = {"adam": "Adam",
+              "adam+balance": "Adam + pressure",
+              "zero_point+pressure": "Zero-point + pressure"}
+
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.8))
+    metrics = [
+        ("rel_l2", "relative L2 error", True),
+        ("zpe", "regularized ZPE", True),
+        ("robustness", "loss increase under noise", True),
+    ]
+    xpos = np.arange(len(configs))
+    for ax, (field, title, logy) in zip(axes, metrics):
+        med, lo, hi = [], [], []
+        for cfg in configs:
+            vals = np.array([float(r[field]) for r in rows if r["config"] == cfg])
+            med.append(np.median(vals))
+            q1, q3 = np.percentile(vals, [25, 75])
+            lo.append(np.median(vals) - q1)
+            hi.append(q3 - np.median(vals))
+        ax.bar(xpos, med, color=[colors[c] for c in configs],
+               yerr=[lo, hi], capsize=4)
+        if logy:
+            ax.set_yscale("log")
+        ax.set_xticks(xpos)
+        ax.set_xticklabels([labels[c] for c in configs], fontsize=8)
+        ax.set_title(title)
+    fig.suptitle("Poisson PINN summary from saved results")
+    fig.tight_layout()
+    fig.savefig(os.path.join(RESULTS, "pinn_benchmark.png"), dpi=140)
+    print(f"saved {RESULTS}/pinn_benchmark.png")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", type=int, default=3)
     ap.add_argument("--budget", type=int, default=9000)
     ap.add_argument("--device", default="cpu")
+    ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
+    if args.plot:
+        plot_from_results()
+        return
 
-    configs = ["adam", "adam+balance", "casimir+balance"]
+    configs = ["adam", "adam+balance", "zero_point+pressure"]
     all_results = []
     for cfg in configs:
         for seed in range(args.seeds):
@@ -155,7 +203,7 @@ def main():
                   f"ZPE={r['zpe']:.3g}  robustness={r['robustness']:.3g}  "
                   f"({r['wall_s']:.0f}s)")
 
-    with open(os.path.join(RESULTS, "pinn_results.csv"), "w", newline="") as fh:
+    with open(CSV_PATH, "w", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["config", "seed", "rel_l2", "zpe", "robustness", "wall_s"])
         for r in all_results:
@@ -168,10 +216,10 @@ def main():
     import matplotlib.pyplot as plt
 
     colors = {"adam": "#7f7f7f", "adam+balance": "#1f77b4",
-              "casimir+balance": "#d62728"}
+              "zero_point+pressure": "#d62728"}
     labels = {"adam": "Adam (unit weights)",
               "adam+balance": "Adam + pressure balance",
-              "casimir+balance": "CasimirOptimizer + pressure balance"}
+              "zero_point+pressure": "Zero-point + pressure balance"}
 
     fig, axes = plt.subplots(1, 3, figsize=(17, 5))
 
@@ -220,7 +268,7 @@ def main():
             label="loss increase under param. noise")
     ax.set_yscale("log"); ax2.set_yscale("log")
     ax.set_xticks(xpos)
-    ax.set_xticklabels(["Adam", "Adam\n+balance", "Casimir\n+balance"],
+    ax.set_xticklabels(["Adam", "Adam\n+balance", "Zero-point\n+pressure"],
                        fontsize=8)
     ax.set_ylabel("regularized ZPE (flatness)")
     ax2.set_ylabel("robustness (lower = flatter)")

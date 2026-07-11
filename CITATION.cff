@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this research code, cite the repository and the included paper."
-title: "casimir-opt: Casimir-Effect-Inspired Optimization"
+title: "fluctuation-regularized-optimization: Casimir/Lifshitz-inspired optimization mechanisms"
 authors:
   - family-names: "Reid"
     given-names: "Steven"

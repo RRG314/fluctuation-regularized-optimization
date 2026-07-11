@@ -27,7 +27,7 @@ zeta value.  At finite temperature the integral becomes the Matsubara sum
 
 Optimization mapping
 --------------------
-In :class:`casimir_opt.swarm.CasimirSwarm`, candidate solutions are mirrors
+In :class:`fluctuation_opt.swarm.LifshitzSwarm`, candidate solutions are mirrors
 and *fitness maps to reflectivity*: good solutions are nearly perfect mirrors
 (r -> 1), bad ones are nearly transparent (r -> 0).  The resulting attraction
 

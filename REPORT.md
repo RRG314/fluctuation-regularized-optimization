@@ -1,10 +1,10 @@
-# casimir-opt — Benchmark & Validation Report
+# fluctuation-regularized-optimization — Benchmark & Validation Report
 
 **Date:** 2026-07-11 · **Library version:** 0.1.0 · **Hardware:** CPU only (PyTorch 2.13.0+cpu, float64 for physics, float32 for ML/PINN)
 
-This report summarizes the full validation of the `casimir-opt` library across five experiment suites: the unit/integration test suite, black-box optimization, physics-informed neural networks (PINNs) on real PDEs, real ML datasets, and a fit to real published Casimir-force experimental data.
+This report summarizes the validation of the `fluctuation_opt` Python package in the `fluctuation-regularized-optimization` repository across five experiment suites: the unit/integration test suite, black-box optimization, physics-informed neural networks (PINNs) on real PDEs, real ML datasets, and a fit to real published Casimir-force experimental data.
 
-All raw numbers, convergence curves, and figures live in `benchmarks/results/`. Every experiment uses multiple random seeds and reports medians with interquartile ranges (IQR). All optimizer comparisons use **matched gradient-evaluation budgets** (the CasimirOptimizer's smoothed mode costs 3 gradient evaluations per step, so it receives 1/3 the steps of Adam/SGD).
+All raw numbers, convergence curves, and figures live in `benchmarks/results/`. Every experiment uses multiple random seeds and reports medians with interquartile ranges (IQR). All optimizer comparisons use **matched gradient-evaluation budgets** (the ZeroPointOptimizer's smoothed mode costs 3 gradient evaluations per step, so it receives 1/3 the steps of Adam/SGD).
 
 ---
 
@@ -23,7 +23,7 @@ Coverage highlights:
 
 Five standard test functions, dimension 10, budget 40 particles × 300 iterations, **20 seeds** per (function, method). Baselines: standard PSO (constriction parameters), scipy differential evolution (DE), random search.
 
-| Function | CasimirSwarm (median) | PSO | DE | RandomSearch |
+| Function | LifshitzSwarm (median) | PSO | DE | RandomSearch |
 |---|---|---|---|---|
 | sphere | 3.1e-06 | 5.7e-16 | 2.2e-24 | 13.4 |
 | rosenbrock | 5.33 | 4.15 | 0.038 | 7685 |
@@ -31,7 +31,7 @@ Five standard test functions, dimension 10, budget 40 particles × 300 iteration
 | ackley | 0.033 | 1.8e-07 | 1.4e-11 | 17.2 |
 | griewank | 0.151 | 0.0996 | 0.112 | 47.1 |
 
-**Honest finding:** CasimirSwarm is a competent global optimizer — 4–6 orders of magnitude better than random search everywhere, and competitive with PSO/DE on the multimodal rastrigin and griewank functions. But it does **not** beat tuned DE or PSO on raw final precision for these classic smooth benchmarks. Its zero-point noise floor (which never anneals to zero, by design) prevents the last-digit convergence that DE achieves. Its comparative value shows up in the derivative-free *physics fitting* task (§6), where all seeds land on the same answer.
+**Honest finding:** LifshitzSwarm is a competent global optimizer — 4–6 orders of magnitude better than random search everywhere, and competitive with PSO/DE on the multimodal rastrigin and griewank functions. But it does **not** beat tuned DE or PSO on raw final precision for these classic smooth benchmarks. Its zero-point noise floor (which never anneals to zero, by design) prevents the last-digit convergence that DE achieves. Its comparative value shows up in the derivative-free *physics fitting* task (§6), where all seeds land on the same answer.
 
 ## 3. Poisson PINN (`pinn_benchmark.py`)
 
@@ -41,9 +41,9 @@ Five standard test functions, dimension 10, budget 40 particles × 300 iteration
 |---|---|---|---|
 | adam | **6.90 (diverged 2/3 seeds)** | 11,538 | 5,935 |
 | adam + balance | 0.0111 | 11.8 | 1,159 |
-| casimir + balance | 0.0123 | **8.3** | **354** |
+| zero-point + pressure | 0.0123 | **8.3** | **354** |
 
-Plain Adam with uniform loss weights catastrophically fails on 2 of 3 seeds (rel L2 ≈ 7 — worse than predicting zero). The `CasimirPressureBalancer` rescues it completely. Casimir + balance matches the balanced-Adam accuracy while finding minima that are ~3× flatter (ZPE) and more robust to weight perturbation.
+Plain Adam with uniform loss weights catastrophically fails on 2 of 3 seeds (rel L2 ≈ 7 — worse than predicting zero). The `GradientPressureBalancer` rescues it completely. Zero-point smoothing plus pressure balancing matches the balanced-Adam accuracy while finding minima that are ~3× flatter (ZPE) and more robust to weight perturbation.
 
 ## 4. Real PDEs: heat & viscous Burgers (`pde_benchmark.py`)
 
@@ -54,12 +54,12 @@ Plain Adam with uniform loss weights catastrophically fails on 2 of 3 seeds (rel
 |---|---|---|---|
 | heat | adam | **0.0019** | 0.074 |
 | heat | adam+balance | 0.0023 | 0.052 |
-| heat | casimir+balance | 0.0086 | **0.039** |
+| heat | zero-point+pressure | 0.0086 | **0.039** |
 | burgers | adam | 0.256 | 1.11 |
 | burgers | adam+balance | 0.465 | 0.130 |
-| burgers | casimir+balance | **0.157** (best seed 0.080) | **0.083** |
+| burgers | zero-point+pressure | **0.157** (best seed 0.080) | **0.083** |
 
-**Honest finding:** on the easy, smooth heat equation, plain Adam is already excellent and the casimir optimizer's noise floor costs a little accuracy (0.9% vs. 0.2% — both are good solutions). On the hard shock-forming Burgers problem, **casimir + balance wins outright**: lowest median error, best single run, and ~13× better perturbation robustness than plain Adam. This matches the design intent — the zero-point exploration helps most on rugged, stiff loss landscapes.
+**Honest finding:** on the easy, smooth heat equation, plain Adam is already excellent and the zero-point optimizer's noise floor costs a little accuracy (0.9% vs. 0.2% — both are good solutions). On the hard shock-forming Burgers problem, **zero-point + pressure balancing wins outright**: lowest median error, best single run, and ~13× better perturbation robustness than plain Adam. This matches the design intent — the zero-point exploration helps most on rugged, stiff loss landscapes.
 
 ## 5. Real ML datasets (`ml_benchmark.py`)
 
@@ -72,12 +72,12 @@ Real data, matched 9,000-grad-eval budget, 5 seeds each:
 |---|---|---|---|
 | digits | sgd | 0.0241 | 0.0007 |
 | digits | adam | **0.0222** | 0.0012 |
-| digits | casimir | **0.0222** | **0.0006** |
+| digits | zero-point | **0.0222** | **0.0006** |
 | housing | sgd | 0.4673 | 0.0284 |
 | housing | adam | **0.4640** | 0.0281 |
-| housing | casimir | 0.4818 | **0.0173** |
+| housing | zero-point | 0.4818 | **0.0173** |
 
-On digits the casimir optimizer **ties Adam exactly** (2.22% median test error) with half the perturbation sensitivity. On housing it trades ~3.8% higher RMSE for ~38% better robustness — it consistently prefers flatter minima, as the theory predicts, and the flatness sometimes (digits) but not always (housing) comes for free.
+On digits the zero-point optimizer **ties Adam exactly** (2.22% median test error) with half the perturbation sensitivity. On housing it trades ~3.8% higher RMSE for ~38% better robustness — it consistently prefers flatter minima, as the theory predicts, and the flatness sometimes (digits) but not always (housing) comes for free.
 
 ## 6. Real Casimir experiment data (`casimir_data_fit.py`)
 
@@ -88,18 +88,18 @@ The forward model is the full finite-temperature Lifshitz formula for gold (plas
 - Perfect-conductor limit (ω_p → ∞, T → 0): deviates from π²ħc/240z⁴ by **0.07%**.
 - Against Decca's own tabulated plasma theory at ω_p = 9 eV: median 0.58%, max 2.88%.
 
-Fit parameters: plasma frequency ω_p ∈ [6, 12] eV and separation offset Δz ∈ ±0.6 nm (the paper's quoted absolute-separation uncertainty). 8 CasimirSwarm seeds + 2 scipy-DE seeds:
+Fit parameters: plasma frequency ω_p ∈ [6, 12] eV and separation offset Δz ∈ ±0.6 nm (the paper's quoted absolute-separation uncertainty). 8 LifshitzSwarm seeds + 2 scipy-DE seeds:
 
 | Method | ω_p (eV) | Δz (nm) | χ² (16 pts) | reduced χ² |
 |---|---|---|---|---|
-| CasimirSwarm (8 seeds) | 9.210–9.217 | −0.60 | 8.53 | 0.61 |
+| LifshitzSwarm (8 seeds) | 9.210–9.217 | −0.60 | 8.53 | 0.61 |
 | scipy DE (2 seeds) | 9.215 | −0.60 | 8.53 | 0.61 |
 
 **All ten runs land on the same optimum**: ω_p ≈ **9.21 eV**, in close agreement with the literature value of ~9.0 eV for gold, with reduced χ² = 0.61 (every residual inside the 95% band — see `casimir_fit.png`). The swarm matched scipy DE's answer within its evaluation budget with zero tuning, demonstrating it as a reliable derivative-free fitter on real, noisy laboratory data.
 
 ## 7. Overall assessment
 
-**Where the Casimir approach wins:**
+**Where the fluctuation-regularized approach wins:**
 
 1. Hard, stiff PINN problems: rescues Poisson from 2/3 catastrophic Adam failures; best accuracy AND robustness on shock-forming Burgers.
 2. Flat-minimum selection: lowest ZPE and perturbation sensitivity in essentially every experiment, exactly as the zero-point-energy theory predicts.

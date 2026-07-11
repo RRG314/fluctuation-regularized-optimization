@@ -3,7 +3,7 @@ import math
 import pytest
 import torch
 
-from casimir_opt import CasimirPressureBalancer, MLP, partial_derivative
+from fluctuation_opt import GradientPressureBalancer, MLP, partial_derivative
 
 
 def test_mlp_shapes_and_device_agnostic():
@@ -39,7 +39,7 @@ def _two_term_setup(scale=100.0):
 
 def test_balancer_equalizes_pressures():
     p, losses = _two_term_setup(scale=100.0)
-    bal = CasimirPressureBalancer([p], n_terms=2, ema=0.0, update_every=1)
+    bal = GradientPressureBalancer([p], n_terms=2, ema=0.0, update_every=1)
     bal(losses())
     w = bal.weights
     # strong term must be down-weighted, weak term up-weighted
@@ -51,7 +51,7 @@ def test_balancer_equalizes_pressures():
 
 def test_balancer_weights_normalized():
     p, losses = _two_term_setup()
-    bal = CasimirPressureBalancer([p], n_terms=2, ema=0.0, update_every=1)
+    bal = GradientPressureBalancer([p], n_terms=2, ema=0.0, update_every=1)
     bal(losses())
     assert float(bal.weights.sum()) == pytest.approx(2.0, rel=1e-5)
     assert (bal.weights > 0).all()
@@ -59,7 +59,7 @@ def test_balancer_weights_normalized():
 
 def test_balancer_total_is_differentiable():
     p, losses = _two_term_setup()
-    bal = CasimirPressureBalancer([p], n_terms=2, update_every=1)
+    bal = GradientPressureBalancer([p], n_terms=2, update_every=1)
     total = bal(losses())
     total.backward()
     assert p.grad is not None
@@ -67,14 +67,14 @@ def test_balancer_total_is_differentiable():
 
 def test_balancer_spectral_mode_runs():
     p, losses = _two_term_setup()
-    bal = CasimirPressureBalancer([p], n_terms=2, update_every=1, mode="spectral")
+    bal = GradientPressureBalancer([p], n_terms=2, update_every=1, mode="spectral")
     total = bal(losses())
     assert torch.isfinite(total)
 
 
 def test_balancer_wrong_term_count_raises():
     p, losses = _two_term_setup()
-    bal = CasimirPressureBalancer([p], n_terms=3)
+    bal = GradientPressureBalancer([p], n_terms=3)
     with pytest.raises(ValueError):
         bal(losses())
 
@@ -86,7 +86,7 @@ def test_balancer_improves_toy_pinn_conditioning():
     def run(balanced):
         torch.manual_seed(0)
         p = torch.nn.Parameter(torch.tensor([1.0, 1.0]))
-        bal = CasimirPressureBalancer([p], n_terms=2, update_every=1)
+        bal = GradientPressureBalancer([p], n_terms=2, update_every=1)
         opt = torch.optim.SGD([p], lr=1e-3)
         for _ in range(200):
             opt.zero_grad()

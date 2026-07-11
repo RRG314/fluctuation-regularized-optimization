@@ -3,7 +3,7 @@ import math
 import pytest
 import torch
 
-from casimir_opt.core import lifshitz
+from fluctuation_opt.core import lifshitz
 
 
 def test_polylog_at_one_is_zeta2():

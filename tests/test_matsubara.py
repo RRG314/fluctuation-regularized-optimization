@@ -3,7 +3,7 @@ import math
 import pytest
 import torch
 
-from casimir_opt.core import matsubara
+from fluctuation_opt.core import matsubara
 
 
 def test_matsubara_frequencies():

@@ -19,12 +19,11 @@
 \newcommand{\Li}{\operatorname{Li}}
 \newcommand{\relL}{\varepsilon_{L^2}}
 
-\title{\textbf{Casimir-Effect--Inspired Optimization: Zero-Point--Regularized\\
-Algorithms for Black-Box Search, Machine Learning, and\\
-Physics-Informed Neural Networks}}
+\title{\textbf{Fluctuation-Regularized Optimization: Lifshitz-Style Swarm Search,\\
+Zero-Point Smoothing, and Gradient-Pressure Balancing}}
 \author{Steven Reid\\[2pt]
 \small\texttt{sreid1118@gmail.com}\\[2pt]
-\small \texttt{casimir-opt} v0.1.0}
+\small \texttt{fluctuation\_opt} v0.1.0}
 \date{\small July 11, 2026}
 
 \begin{document}
@@ -33,13 +32,13 @@ Physics-Informed Neural Networks}}
 \maketitle
 \begin{onecolabstract}
 \noindent
-We introduce \texttt{casimir-opt}, a family of optimization algorithms whose dynamics are
-derived from the physics of the Casimir effect. Candidate solutions are treated as partially
+We introduce \texttt{fluctuation\_opt}, a family of optimization algorithms whose mechanisms are
+inspired by fluctuation physics and Lifshitz/Casimir mathematics. Candidate solutions are treated as partially
 reflective mirrors that attract one another through Lifshitz forces whose strength is set by
 their fitness, while a quantum-annealing temperature schedule cools the population toward a
 \emph{zero-point} fluctuation floor that never vanishes. The same zero-point principle yields a
 gradient-based optimizer that descends a one-loop effective potential---implicitly penalizing
-curvature and selecting flat minima---and a Casimir ``pressure balancer'' that adaptively
+curvature and selecting flat minima---and a gradient-pressure balancer that adaptively
 weights the loss terms of physics-informed neural networks (PINNs). We validate the framework
 extensively: an 86-test suite verifying the physics (Newton's third law, force--energy
 consistency, Matsubara limits) and the numerics (stochastic Lanczos quadrature, Hutchinson
@@ -79,10 +78,10 @@ and---as we argue in Sec.~\ref{sec:torch}---the residual fluctuations act as an 
 curvature penalty that biases search toward flat minima, a property long associated with
 generalization in machine learning~\cite{hochreiter1997}.
 
-This paper makes three contributions. (i) We formalize the mapping from Casimir/Lifshitz
-physics to three concrete algorithms: a population optimizer (\textsc{CasimirSwarm}), a
-stochastic gradient method (\textsc{CasimirOptimizer}), and an adaptive PINN loss balancer
-(\textsc{CasimirPressureBalancer}). (ii) We validate the implementation with an 86-test suite
+This paper makes three contributions. (i) We formalize the mapping from fluctuation and
+Lifshitz-style mechanisms to three concrete algorithms: a population optimizer
+(\textsc{LifshitzSwarm}), a stochastic gradient method (\textsc{ZeroPointOptimizer}), and an
+adaptive PINN loss balancer (\textsc{GradientPressureBalancer}). (ii) We validate the implementation with an 86-test suite
 that checks physical laws, not just code paths. (iii) We evaluate the framework on real
 problems and real data---including a fit to real laboratory Casimir measurements---against
 standard baselines (PSO~\cite{kennedy1995}, differential evolution~\cite{storn1997},
@@ -94,7 +93,7 @@ wins and where it does not.
 \subsection{Lifshitz interaction between fitness-graded mirrors}
 \label{sec:lifshitz}
 
-In the \textsc{CasimirSwarm}, each candidate solution $x_i \in \mathbb{R}^D$ is a mirror with
+In the \textsc{LifshitzSwarm}, each candidate solution $x_i \in \mathbb{R}^D$ is a mirror with
 reflectivity $r_i \in [0,1)$ assigned from its objective value, either by rank,
 $r_i = r_{\max}\,\rho_i$ with $\rho_i$ a linear rank score, or by a scale-free Boltzmann map on
 standardized fitness. Summing the two-body mode restriction over a multiplicative reflectivity
@@ -133,7 +132,7 @@ which we use to enforce matched budgets against baselines.
 \subsection{Gradient descent on a one-loop effective potential}
 \label{sec:torch}
 
-For differentiable losses $L(\theta)$, the \textsc{CasimirOptimizer} descends not $L$ itself
+For differentiable losses $L(\theta)$, the \textsc{ZeroPointOptimizer} descends not $L$ itself
 but the one-loop effective potential
 \begin{equation}
 V_{\mathrm{eff}}(\theta) \;=\; L(\theta) \;+\;
@@ -159,14 +158,14 @@ matrix-free by stochastic Lanczos quadrature~\cite{ubaru2017}, together with a d
 \emph{perturbation robustness} measure: the increase in loss (or task metric) under Gaussian
 parameter noise $\sigma = 0.02$ averaged over 20 draws.
 
-\subsection{Casimir pressure balancing for PINNs}
+\subsection{Gradient-pressure balancing for PINNs}
 \label{sec:balancer}
 
 PINN losses are sums of competing terms (PDE residual, boundary, initial conditions) whose
 gradients can differ by orders of magnitude, a well-documented failure
 mode~\cite{wang2021,raissi2019}. Interpreting each loss term as a field exerting radiation
 pressure $P_k = \lVert \nabla_\theta L_k \rVert$ (optionally weighted by a spectral stiffness
-factor), the \textsc{CasimirPressureBalancer} enforces mechanical equilibrium by setting
+factor), the \textsc{GradientPressureBalancer} enforces mechanical equilibrium by setting
 \begin{equation}
 w_k \;\propto\; \frac{\bar P}{P_k + \delta}, \qquad
 \bar P = \frac{1}{K}\sum_k P_k ,
@@ -202,7 +201,7 @@ Table~\ref{tab:blackbox} and Fig.~\ref{fig:blackbox} summarize.
 \label{tab:blackbox}
 \begin{tabular}{lcccc}
 \toprule
-Function & CasimirSwarm & PSO & DE & Random \\
+Function & LifshitzSwarm & PSO & DE & Random \\
 \midrule
 Sphere     & $3.1\!\times\!10^{-6}$ & $5.7\!\times\!10^{-16}$ & $2.2\!\times\!10^{-24}$ & 13.4 \\
 Rosenbrock & 5.33 & 4.15 & \textbf{0.038} & 7685 \\
@@ -217,13 +216,13 @@ Griewank   & 0.151 & \textbf{0.100} & 0.112 & 47.1 \\
 \centering
 \includegraphics[width=\linewidth]{blackbox_convergence.png}
 \caption{Median convergence (shaded: IQR over 20 seeds) on five classical test functions,
-dimension 10. CasimirSwarm is a competent global optimizer but its zero-point noise floor
+dimension 10. LifshitzSwarm is a competent global optimizer but its zero-point noise floor
 (Sec.~\ref{sec:annealing}) prevents the deep final convergence of tuned DE and PSO on smooth
 functions.}
 \label{fig:blackbox}
 \end{figure}
 
-\textbf{Honest reading.} CasimirSwarm beats random search by 4--6 orders of magnitude
+\textbf{Honest reading.} LifshitzSwarm beats random search by 4--6 orders of magnitude
 everywhere and is competitive on the multimodal Rastrigin and Griewank landscapes, but it does
 \emph{not} beat tuned DE or PSO in raw final precision on these smooth benchmarks. This is a
 direct, predictable consequence of the never-vanishing zero-point noise: the algorithm is
@@ -252,7 +251,7 @@ Config & $\relL$ & Robustness $\downarrow$ & $E_0 \downarrow$ \\
 \midrule
 Adam              & 6.90$^{\dagger}$ & 11{,}538 & 5{,}935 \\
 Adam + balance    & \textbf{0.0111} & 11.8 & 1{,}159 \\
-Casimir + balance & 0.0123 & \textbf{8.3} & \textbf{354} \\
+Zero-point + pressure & 0.0123 & \textbf{8.3} & \textbf{354} \\
 \bottomrule
 \multicolumn{4}{l}{\footnotesize $^{\dagger}$Diverged on 2 of 3 seeds ($\relL \approx 7$; worse than predicting $u\equiv 0$).}
 \end{tabular}
@@ -263,13 +262,13 @@ Casimir + balance & 0.0123 & \textbf{8.3} & \textbf{354} \\
 \includegraphics[width=\linewidth]{pinn_benchmark.png}
 \caption{Poisson PINN with a stiff two-scale solution. Uniformly weighted Adam fails
 catastrophically on 2 of 3 seeds; the pressure balancer (Eq.~\ref{eq:balance}) rescues
-training, and the Casimir optimizer additionally selects a $\sim$3$\times$ flatter minimum.}
+training, and the zero-point optimizer additionally selects a $\sim$3$\times$ flatter minimum.}
 \label{fig:pinn}
 \end{figure}
 
 Uniform loss weighting fails catastrophically---median error $6.9$, i.e.\ the network learns
 essentially nothing on most seeds. The pressure balancer alone repairs this (1.1\% error). The
-Casimir optimizer with balancing matches that accuracy while landing in minima with
+Zero-point smoothing with pressure balancing matches that accuracy while landing in minima with
 $3.3\times$ lower zero-point energy and the best robustness, consistent with the effective
 potential of Eq.~\eqref{eq:veff}.
 
@@ -299,11 +298,11 @@ PDE & Config & $\relL$ & best run & Robust.\ $\downarrow$ \\
 \midrule
 Heat & Adam              & \textbf{0.0019} & 0.0018 & 0.074 \\
 Heat & Adam + balance    & 0.0023 & 0.0012 & 0.052 \\
-Heat & Casimir + balance & 0.0086 & 0.0075 & \textbf{0.039} \\
+Heat & Zero-point + pressure & 0.0086 & 0.0075 & \textbf{0.039} \\
 \midrule
 Burgers & Adam              & 0.256 & 0.149 & 1.11 \\
 Burgers & Adam + balance    & 0.465 & 0.293 & 0.130 \\
-Burgers & Casimir + balance & \textbf{0.157} & \textbf{0.080} & \textbf{0.083} \\
+Burgers & Zero-point + pressure & \textbf{0.157} & \textbf{0.080} & \textbf{0.083} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -312,15 +311,15 @@ Burgers & Casimir + balance & \textbf{0.157} & \textbf{0.080} & \textbf{0.083} \
 \centering
 \includegraphics[width=\linewidth]{pde_benchmark.png}
 \caption{Heat (easy, smooth) and viscous Burgers (hard, shock-forming) PINNs. On Burgers,
-Casimir + balance attains both the lowest median error and $13\times$ better perturbation
+zero-point + pressure attains both the lowest median error and $13\times$ better perturbation
 robustness than plain Adam.}
 \label{fig:pde}
 \end{figure}
 
 The pattern of Table~\ref{tab:pde} is instructive. On the \emph{easy} heat equation plain Adam
 is already excellent (0.19\%) and the zero-point floor costs accuracy (0.86\%---still a good
-solution). On the \emph{hard} shock-forming Burgers problem the ordering reverses: Casimir +
-balance achieves the lowest median error (0.157 vs.\ 0.256 for Adam and 0.465 for balanced
+solution). On the \emph{hard} shock-forming Burgers problem the ordering reverses: zero-point +
+pressure achieves the lowest median error (0.157 vs.\ 0.256 for Adam and 0.465 for balanced
 Adam), the best single run (0.080), and $13\times$ better robustness than Adam. The zero-point
 exploration pays precisely where the loss landscape is rugged.
 
@@ -344,11 +343,11 @@ Dataset & Method & Test metric & Robust.\ $\downarrow$ \\
 \midrule
 Digits & SGD     & 0.0241 & 0.0007 \\
 Digits & Adam    & \textbf{0.0222} & 0.0012 \\
-Digits & Casimir & \textbf{0.0222} & \textbf{0.0006} \\
+Digits & Zero-point & \textbf{0.0222} & \textbf{0.0006} \\
 \midrule
 Housing & SGD     & 0.4673 & 0.0284 \\
 Housing & Adam    & \textbf{0.4640} & 0.0281 \\
-Housing & Casimir & 0.4818 & \textbf{0.0173} \\
+Housing & Zero-point & 0.4818 & \textbf{0.0173} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -356,13 +355,13 @@ Housing & Casimir & 0.4818 & \textbf{0.0173} \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{ml_benchmark.png}
-\caption{Real-data ML benchmark at matched gradient budgets. The Casimir optimizer ties Adam on
+\caption{Real-data ML benchmark at matched gradient budgets. The zero-point optimizer ties Adam on
 digits with half the perturbation sensitivity; on housing it trades 3.8\% RMSE for 38\% better
 robustness.}
 \label{fig:ml}
 \end{figure}
 
-On digits the Casimir optimizer \emph{ties Adam exactly} (2.22\% median test error) while
+On digits the zero-point optimizer \emph{ties Adam exactly} (2.22\% median test error) while
 halving perturbation sensitivity. On housing it is 3.8\% worse in RMSE but 38\% more robust.
 Across both datasets the flat-minimum bias is consistent; whether the flatness is free (digits)
 or costs accuracy (housing) is problem-dependent.
@@ -370,7 +369,7 @@ or costs accuracy (housing) is problem-dependent.
 \subsection{Fitting real Casimir experimental data}
 \label{sec:fit}
 
-Finally, we close the loop: a Casimir-inspired optimizer fitting \emph{actual Casimir
+Finally, we close the loop: a fluctuation-regularized optimizer fitting \emph{actual Casimir
 measurements}. We use the 16-point sphere--plate pressure dataset of Decca \emph{et
 al.}~\cite{decca2007} (separations 162--746\,nm with 95\% confidence half-widths). The forward
 model is the finite-temperature Lifshitz formula for a plasma-model metal,
@@ -394,7 +393,7 @@ The fit parameters are $\theta = (\omega_p, \Delta z)$---the gold plasma frequen
 separation offset bounded by the paper's quoted $\pm 0.6$\,nm absolute-separation
 uncertainty---minimizing
 $\chi^2(\theta) = \sum_i \big[P_i - P(z_i + \Delta z;\, \omega_p)\big]^2 / \sigma_i^2$ with
-$\sigma_i$ the 68\% errors. We run 8 CasimirSwarm seeds against 2 SciPy DE seeds at comparable
+$\sigma_i$ the 68\% errors. We run 8 LifshitzSwarm seeds against 2 SciPy DE seeds at comparable
 budgets ($\sim$1{,}470 evaluations, $\sim$43\,s per run).
 
 \begin{table}[t]
@@ -406,7 +405,7 @@ budgets ($\sim$1{,}470 evaluations, $\sim$43\,s per run).
 \toprule
 Method & $\omega_p$ (eV) & $\Delta z$ (nm) & $\chi^2$ & $\chi^2_{\mathrm{red}}$ \\
 \midrule
-CasimirSwarm ($\times 8$) & 9.210--9.217 & $-0.60$ & 8.53 & 0.61 \\
+LifshitzSwarm ($\times 8$) & 9.210--9.217 & $-0.60$ & 8.53 & 0.61 \\
 SciPy DE ($\times 2$)     & 9.215        & $-0.60$ & 8.53 & 0.61 \\
 \midrule
 Literature~\cite{decca2007} & $\approx 9.0$ & --- & --- & --- \\
@@ -432,7 +431,7 @@ expensive-to-evaluate physics objective, which is the regime it was designed for
 \section{Discussion and limitations}
 
 The experiments support a consistent picture. The zero-point mechanism is a \emph{flatness
-prior}: in every experiment where we measured it, the Casimir optimizer found minima with lower
+prior}: in every experiment where we measured it, the zero-point optimizer found minima with lower
 spectral zero-point energy and better perturbation robustness than budget-matched baselines.
 This prior is valuable on stiff or rugged objectives (multi-scale Poisson, shock-forming
 Burgers, noisy experimental $\chi^2$) and neutral-to-slightly-costly on easy, smooth ones (heat
@@ -448,9 +447,9 @@ feature of this dataset rather than of the optimizer.
 
 \section{Conclusion}
 
-Casimir physics furnishes a coherent set of optimization mechanisms---fitness-graded Lifshitz
-attraction, annealing to a zero-point floor, one-loop curvature penalties, and radiation-pressure
-loss balancing---that are implemented and physically validated in \texttt{casimir-opt}. Under
+Fluctuation-regularized optimization furnishes a coherent set of mechanisms---fitness-graded
+Lifshitz-style attraction, annealing to a zero-point floor, one-loop curvature penalties, and
+gradient-pressure loss balancing---that are implemented and validated in \texttt{fluctuation\_opt}. Under
 matched budgets on real data and real PDEs, the framework rescues PINN training that uniformly
 weighted Adam fails, wins outright on the hardest PDE tested, ties Adam on real classification
 data with flatter minima, and reproduces the gold plasma frequency from real laboratory Casimir

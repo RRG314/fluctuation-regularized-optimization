@@ -1,4 +1,4 @@
-"""Fit REAL Casimir experiment data with CasimirSwarm.
+"""Fit REAL Casimir experiment data with LifshitzSwarm.
 
 Data
 ----
@@ -36,8 +36,8 @@ Free parameters fitted to the data:
 Objective: chi^2 = sum_i ( (P_model(z_i + dz) - P_i) / sigma_i )^2,
 sigma_i = Xi_i / 1.96  (converting the 95% half-width to 1 s.d.).
 
-The point of the exercise: a *Casimir-physics-based optimizer fitting
-Casimir-physics data* -- and an independent check that the swarm recovers
+The point of the exercise: a *Lifshitz-style derivative-free optimizer fitting
+real Casimir-physics data* -- and an independent check that the swarm recovers
 the physically correct plasma frequency from real measurements.
 
 Run:  python benchmarks/casimir_data_fit.py [--seeds 8]
@@ -56,7 +56,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from casimir_opt import CasimirSwarm  # noqa: E402
+from fluctuation_opt import LifshitzSwarm  # noqa: E402
 
 RESULTS = os.path.join(os.path.dirname(__file__), "results")
 os.makedirs(RESULTS, exist_ok=True)
@@ -174,7 +174,7 @@ def validate_model():
 
 # ---------------------------------------------------------------- fitting
 def fit_swarm(seed: int, max_iter: int = 60, n_particles: int = 24):
-    sw = CasimirSwarm(bounds=[(6.0, 12.0), (-0.6, 0.6)],
+    sw = LifshitzSwarm(bounds=[(6.0, 12.0), (-0.6, 0.6)],
                       n_particles=n_particles, seed=seed,
                       dtype=torch.float64)
     t0 = time.time()
@@ -208,9 +208,9 @@ def main():
         r = fit_swarm(seed)
         wp, dz = float(r["x"][0]), float(r["x"][1])
         red = r["fun"] / (len(DECCA_2007) - 2)
-        rows.append(["CasimirSwarm", seed, wp, dz, r["fun"], red,
+        rows.append(["LifshitzSwarm", seed, wp, dz, r["fun"], red,
                      r["n_evals"], r["wall_s"]])
-        print(f"CasimirSwarm seed={seed}  wp={wp:.3f} eV  dz={dz:+.3f} nm  "
+        print(f"LifshitzSwarm seed={seed}  wp={wp:.3f} eV  dz={dz:+.3f} nm  "
               f"chi2={r['fun']:.2f} (red. {red:.2f})  "
               f"[{r['n_evals']} evals, {r['wall_s']:.0f}s]")
     for seed in range(max(2, args.seeds // 4)):
@@ -235,7 +235,7 @@ def main():
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    swarm_rows = [r for r in rows if r[0] == "CasimirSwarm"]
+    swarm_rows = [r for r in rows if r[0] == "LifshitzSwarm"]
     best = min(swarm_rows, key=lambda r: r[4])
     wp_b, dz_b = best[2], best[3]
 
@@ -281,7 +281,7 @@ def main():
     ax.set_title(f"recovered wp across {len(wps)} seeds")
     ax.legend(fontsize=8)
 
-    fig.suptitle("CasimirSwarm fitting real Casimir-force measurements "
+    fig.suptitle("LifshitzSwarm fitting real Casimir-force measurements "
                  "(Decca et al., EPJ C 51, 963 (2007))")
     fig.tight_layout()
     fig.savefig(os.path.join(RESULTS, "casimir_fit.png"), dpi=140)

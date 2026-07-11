@@ -3,7 +3,7 @@ import math
 import pytest
 import torch
 
-from casimir_opt.core import spectral
+from fluctuation_opt.core import spectral
 
 
 def make_spd(dim=30, seed=0):

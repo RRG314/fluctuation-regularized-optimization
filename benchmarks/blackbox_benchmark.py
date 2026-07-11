@@ -1,4 +1,4 @@
-"""Black-box benchmark: CasimirSwarm vs PSO, differential evolution, random search.
+"""Black-box benchmark: LifshitzSwarm vs PSO, differential evolution, random search.
 
 Protocol: fixed evaluation budget per run (population 40 x 300 iterations),
 10 seeds per (function, method), dimension 10.  Reports final best value
@@ -20,7 +20,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from casimir_opt import CasimirSwarm  # noqa: E402
+from fluctuation_opt import LifshitzSwarm  # noqa: E402
 
 RESULTS = os.path.join(os.path.dirname(__file__), "results")
 os.makedirs(RESULTS, exist_ok=True)
@@ -122,14 +122,14 @@ def run_differential_evolution(f, bounds, dim, n_pop, iters, seed, device):
     return float(res.fun), hist
 
 
-def run_casimir(f, bounds, dim, n_pop, iters, seed, device):
-    sw = CasimirSwarm([bounds] * dim, n_particles=n_pop, seed=seed, device=device)
+def run_lifshitz(f, bounds, dim, n_pop, iters, seed, device):
+    sw = LifshitzSwarm([bounds] * dim, n_particles=n_pop, seed=seed, device=device)
     res = sw.minimize(f, max_iter=iters)
     return res["fun"], res["history"]
 
 
 METHODS = {
-    "CasimirSwarm": run_casimir,
+    "LifshitzSwarm": run_lifshitz,
     "PSO": run_pso,
     "DifferentialEvolution": run_differential_evolution,
     "RandomSearch": run_random_search,
@@ -176,7 +176,7 @@ def main():
     import matplotlib.pyplot as plt
 
     fig, axes = plt.subplots(2, 3, figsize=(16, 9))
-    colors = {"CasimirSwarm": "#d62728", "PSO": "#1f77b4",
+    colors = {"LifshitzSwarm": "#d62728", "PSO": "#1f77b4",
               "DifferentialEvolution": "#2ca02c", "RandomSearch": "#7f7f7f"}
     for ax, fname in zip(axes.flat, FUNCTIONS):
         for mname in METHODS:
@@ -196,7 +196,7 @@ def main():
     axes.flat[0].legend()
     axes.flat[-1].axis("off")
     axes.flat[-1].text(0.05, 0.5,
-                       "CasimirSwarm: Lifshitz-coupled mirrors\n"
+                       "LifshitzSwarm: Lifshitz-coupled mirrors\n"
                        "+ quantum (zero-point) annealing\n"
                        f"pop={args.pop}, iters={args.iters}, "
                        f"seeds={args.seeds}",

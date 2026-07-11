@@ -4,8 +4,8 @@ adam               seed=2  relL2=0.0917  ZPE=6.87e+03  robustness=1.15e+04  (68s
 adam+balance       seed=0  relL2=0.0088  ZPE=572  robustness=10.2  (58s)
 adam+balance       seed=1  relL2=0.0139  ZPE=1.16e+03  robustness=11.8  (36s)
 adam+balance       seed=2  relL2=0.0111  ZPE=1.53e+03  robustness=12.8  (39s)
-casimir+balance    seed=0  relL2=0.0243  ZPE=954  robustness=8.31  (40s)
-casimir+balance    seed=1  relL2=0.0123  ZPE=354  robustness=8.49  (51s)
-casimir+balance    seed=2  relL2=0.0070  ZPE=75.1  robustness=7.06  (50s)
+zero_point+pressure    seed=0  relL2=0.0243  ZPE=954  robustness=8.31  (40s)
+zero_point+pressure    seed=1  relL2=0.0123  ZPE=354  robustness=8.49  (51s)
+zero_point+pressure    seed=2  relL2=0.0070  ZPE=75.1  robustness=7.06  (50s)
 
-Saved results to /sessions/stoic-busy-planck/mnt/casimir-optimizer/benchmarks/results/
+Saved results to /sessions/stoic-busy-planck/mnt/fluctuation-regularized-optimizationimizer/benchmarks/results/

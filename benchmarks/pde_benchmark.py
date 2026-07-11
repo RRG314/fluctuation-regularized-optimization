@@ -16,8 +16,8 @@ burgers:  u_t + u u_x = nu u_xx,      x in [-1,1], t in [0,1], nu = 0.01/pi
 
 Configurations (matched total gradient evaluations):
   A. adam              -- Adam, unit loss weights
-  B. adam+balance      -- Adam + CasimirPressureBalancer
-  C. casimir+balance   -- CasimirOptimizer + CasimirPressureBalancer
+  B. adam+balance      -- Adam + GradientPressureBalancer
+  C. zero_point+pressure   -- ZeroPointOptimizer + GradientPressureBalancer
 
 Run:  python benchmarks/pde_benchmark.py --pde heat    [--seeds 3]
       python benchmarks/pde_benchmark.py --pde burgers [--seeds 3]
@@ -38,7 +38,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from casimir_opt import (CasimirOptimizer, CasimirPressureBalancer, MLP,  # noqa: E402
+from fluctuation_opt import (ZeroPointOptimizer, GradientPressureBalancer, MLP,  # noqa: E402
                          partial_derivative)
 
 RESULTS = os.path.join(os.path.dirname(__file__), "results")
@@ -171,7 +171,7 @@ def run_config(problem, config, seed, device, budget):
 
     balancer = None
     if config.endswith("+balance"):
-        balancer = CasimirPressureBalancer(net.parameters(), n_terms=3,
+        balancer = GradientPressureBalancer(net.parameters(), n_terms=3,
                                            update_every=25)
 
     def closure():
@@ -193,7 +193,7 @@ def run_config(problem, config, seed, device, budget):
         n_probes = 2
         evals_per_step = 1 + 2 * ((n_probes + 1) // 2)
         steps = budget // evals_per_step
-        opt = CasimirOptimizer(net.parameters(), lr=2e-3, sigma=5e-3,
+        opt = ZeroPointOptimizer(net.parameters(), lr=2e-3, sigma=5e-3,
                                n_probes=n_probes, floor_frac=0.3,
                                tau=steps / 4, seed=seed)
         for i in range(steps):
@@ -203,7 +203,7 @@ def run_config(problem, config, seed, device, budget):
     wall = time.time() - t0
 
     err = prob.rel_l2(net)
-    diag = CasimirOptimizer(net.parameters(), seed=0)
+    diag = ZeroPointOptimizer(net.parameters(), seed=0)
     zpe = diag.zero_point_energy(closure, s=0.05, n_probes=4, m=15)
     robust = perturbation_robustness(net, closure, seed=seed)
     return {"pde": problem, "config": config, "seed": seed, "rel_l2": err,
@@ -243,12 +243,12 @@ def make_plots():
         rd = csv.DictReader(fh)
         rows = list(rd)
 
-    configs = ["adam", "adam+balance", "casimir+balance"]
+    configs = ["adam", "adam+balance", "zero_point+pressure"]
     colors = {"adam": "#7f7f7f", "adam+balance": "#1f77b4",
-              "casimir+balance": "#d62728"}
+              "zero_point+pressure": "#d62728"}
     labels = {"adam": "Adam (unit weights)",
               "adam+balance": "Adam + pressure balance",
-              "casimir+balance": "CasimirOptimizer + pressure balance"}
+              "zero_point+pressure": "Zero-point + pressure balance"}
 
     fig, axes = plt.subplots(1, 3, figsize=(17, 5))
     for ax, pde in zip(axes[:2], ["heat", "burgers"]):
@@ -294,7 +294,7 @@ def main():
     ap.add_argument("--seeds", type=int, default=3)
     ap.add_argument("--budget", type=int, default=6000)
     ap.add_argument("--device", default="cpu")
-    ap.add_argument("--configs", default="adam,adam+balance,casimir+balance")
+    ap.add_argument("--configs", default="adam,adam+balance,zero_point+pressure")
     ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
 

@@ -3,15 +3,15 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "casimir-opt"
+name = "fluctuation-regularized-optimization"
 version = "0.1.0"
-description = "Casimir-effect-based optimization: zero-point-energy regularized gradient descent and Lifshitz-coupled swarm search, with PINN utilities."
+description = "Fluctuation-regularized optimization research code: Lifshitz-style swarm search, zero-point-smoothed PyTorch optimization, and gradient-pressure-balanced PINN utilities."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Steven Reid" }]
-keywords = ["optimization", "pinn", "casimir-effect", "swarm-optimization", "pytorch"]
+keywords = ["optimization", "pinn", "zero-point-regularization", "swarm-optimization", "pytorch", "lifshitz"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -33,7 +33,7 @@ test = ["pytest>=7.0"]
 dev = ["pytest>=7.0", "scipy>=1.10", "matplotlib>=3.7", "scikit-learn>=1.3", "build>=1.2"]
 
 [tool.setuptools.packages.find]
-include = ["casimir_opt*"]
+include = ["fluctuation_opt*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

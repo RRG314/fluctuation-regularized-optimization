@@ -1,4 +1,4 @@
-"""Real-data ML benchmark: CasimirOptimizer vs Adam vs SGD-momentum.
+"""Real-data ML benchmark: ZeroPointOptimizer vs Adam vs SGD-momentum.
 
 Datasets (both real, loaded through scikit-learn)
 -------------------------------------------------
@@ -11,7 +11,7 @@ Protocol
 --------
 - 70/30 train/test split, features standardized (regression target too).
 - Fixed budget of *gradient evaluations* (backward passes), not steps:
-  CasimirOptimizer spends 3 evaluations per step (center + antithetic
+  ZeroPointOptimizer spends 3 evaluations per step (center + antithetic
   pair), so Adam/SGD get 3x as many steps.  Same minibatch stream per seed.
 - 5 seeds; report median and IQR of the test metric.
 - Flat-minimum diagnostics at the end of training:
@@ -38,7 +38,7 @@ import torch
 import torch.nn.functional as Fnn
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from casimir_opt import CasimirOptimizer, MLP  # noqa: E402
+from fluctuation_opt import ZeroPointOptimizer, MLP  # noqa: E402
 
 RESULTS = os.path.join(os.path.dirname(__file__), "results")
 os.makedirs(RESULTS, exist_ok=True)
@@ -133,11 +133,11 @@ def run(dataset, method, seed, budget, batch):
 
     curve = []
     t0 = time.time()
-    if method == "casimir":
+    if method == "zero_point":
         n_probes = 2
         evals_per_step = 1 + 2 * ((n_probes + 1) // 2)
         steps = budget // evals_per_step
-        opt = CasimirOptimizer(net.parameters(), lr=1e-3, sigma=1e-2,
+        opt = ZeroPointOptimizer(net.parameters(), lr=1e-3, sigma=1e-2,
                                n_probes=n_probes, floor_frac=0.3,
                                tau=steps / 4, seed=seed)
         for i in range(steps):
@@ -165,7 +165,7 @@ def run(dataset, method, seed, budget, batch):
 
     metric = test_metric(dataset, net, Xte, yte)
     rob = robustness(dataset, net, Xte, yte, seed=seed)
-    diag = CasimirOptimizer(net.parameters(), seed=0)
+    diag = ZeroPointOptimizer(net.parameters(), seed=0)
     zpe = diag.zero_point_energy(
         lambda: loss_fn(dataset, net, Xtr, ytr), s=0.05, n_probes=4, m=15)
     return {"dataset": dataset, "method": method, "seed": seed,
@@ -204,10 +204,10 @@ def make_plots():
     with open(CSV_PATH) as fh:
         rows = list(csv.DictReader(fh))
 
-    methods = ["sgd", "adam", "casimir"]
-    colors = {"sgd": "#7f7f7f", "adam": "#1f77b4", "casimir": "#d62728"}
+    methods = ["sgd", "adam", "zero_point"]
+    colors = {"sgd": "#7f7f7f", "adam": "#1f77b4", "zero_point": "#d62728"}
     labels = {"sgd": "SGD + momentum", "adam": "Adam",
-              "casimir": "CasimirOptimizer"}
+              "zero_point": "Zero-point smoothing"}
     metric_name = {"digits": "test error rate", "housing": "test RMSE (std.)"}
 
     fig, axes = plt.subplots(2, 2, figsize=(13, 9))
@@ -261,7 +261,7 @@ def main():
     ap.add_argument("--seeds", type=int, default=5)
     ap.add_argument("--budget", type=int, default=9000)
     ap.add_argument("--batch", type=int, default=256)
-    ap.add_argument("--methods", default="sgd,adam,casimir")
+    ap.add_argument("--methods", default="sgd,adam,zero_point")
     ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
 

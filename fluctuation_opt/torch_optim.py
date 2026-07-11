@@ -1,4 +1,4 @@
-"""CasimirOptimizer: gradient descent on the one-loop effective potential.
+"""ZeroPointOptimizer: gradient descent on the one-loop effective potential.
 
 The physical picture
 --------------------
@@ -18,7 +18,7 @@ For Gaussian fluctuations of amplitude sigma,
 
 whose second term is exactly the leading heat-kernel coefficient of the
 regularized zero-point energy (see ``core.spectral``).  Descending
-``L_sigma`` therefore adds a *Casimir force* pulling toward flat minima --
+``L_sigma`` therefore adds a fluctuation-regularized smoothing force pulling toward flat minima --
 which is what generalization (and PINN robustness) wants.
 
 Two modes
@@ -41,7 +41,7 @@ Unlike torch's built-ins, ``step`` takes a closure that RETURNS the loss
 WITHOUT calling ``backward()`` -- the optimizer drives autograd itself
 (it needs to re-evaluate the loss at fluctuated parameter copies)::
 
-    opt = CasimirOptimizer(model.parameters(), lr=1e-3, sigma=1e-2)
+    opt = ZeroPointOptimizer(model.parameters(), lr=1e-3, sigma=1e-2)
     for batch in data:
         def closure():
             return loss_fn(model, batch)
@@ -57,8 +57,8 @@ from typing import Callable, Iterable, List, Optional
 
 import torch
 
-from casimir_opt.core.matsubara import QuantumAnnealingSchedule, thermal_variance
-from casimir_opt.core import spectral
+from fluctuation_opt.core.matsubara import QuantumAnnealingSchedule, thermal_variance
+from fluctuation_opt.core import spectral
 
 Tensor = torch.Tensor
 
@@ -87,8 +87,8 @@ def _grad_or_zeros(
     ]
 
 
-class CasimirOptimizer(torch.optim.Optimizer):
-    """Adam-based optimizer with a Casimir (zero-point / flatness) force.
+class ZeroPointOptimizer(torch.optim.Optimizer):
+    """Adam-based optimizer with a zero-point / flatness regularization force.
 
     Parameters
     ----------
@@ -137,7 +137,7 @@ class CasimirOptimizer(torch.optim.Optimizer):
         self._generator: Optional[torch.Generator] = None
         self._t = 0
 
-        # calibrate the quantum annealing schedule exactly as CasimirSwarm:
+        # calibrate the quantum annealing schedule exactly as LifshitzSwarm:
         # floor/initial = 1/sqrt(coth(omega / 2 T0)) at omega = 1
         floor_frac = min(max(float(floor_frac), 1e-3), 0.999)
         target_coth = 1.0 / floor_frac**2
@@ -165,11 +165,11 @@ class CasimirOptimizer(torch.optim.Optimizer):
         return self.schedule(self._t)
 
     # ------------------------------------------------------------------
-    def _casimir_gradient(self, closure: Callable[[], Tensor]) -> Tensor:
+    def _regularized_gradient(self, closure: Callable[[], Tensor]) -> Tensor:
         """Return (loss, list-of-effective-gradients)."""
         params = self._params()
         if not params:
-            raise ValueError("CasimirOptimizer has no trainable parameters")
+            raise ValueError("ZeroPointOptimizer has no trainable parameters")
         device = params[0].device
 
         with torch.enable_grad():
@@ -287,8 +287,8 @@ class CasimirOptimizer(torch.optim.Optimizer):
         """One optimization step.  ``closure`` returns the loss tensor
         (do NOT call ``backward()`` inside it)."""
         if closure is None:
-            raise ValueError("CasimirOptimizer requires a closure returning the loss")
-        loss, eff = self._casimir_gradient(closure)
+            raise ValueError("ZeroPointOptimizer requires a closure returning the loss")
+        loss, eff = self._regularized_gradient(closure)
         self._adam_update(eff)
         self._t += 1
         return loss

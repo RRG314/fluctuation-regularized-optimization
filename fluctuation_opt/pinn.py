@@ -1,4 +1,4 @@
-"""PINN utilities: Casimir pressure balancing of multi-term physics losses.
+"""PINN utilities: gradient-pressure balancing of multi-term physics losses.
 
 The physical picture
 --------------------
@@ -6,12 +6,9 @@ A physics-informed neural network minimizes a sum of competing terms
 
     L = w_r * L_residual + w_b * L_boundary + w_i * L_initial + ...
 
-Each term restricts a different part of function space -- exactly like the
-plates of a Casimir cavity restrict different field modes.  A boundary in a
-fluctuating field feels *radiation pressure* proportional to the mode flux
-hitting it; a cavity is in mechanical equilibrium only when pressures on all
-boundaries balance.  A PINN trains well only when the "pressure" each loss
-term exerts on the parameters -- its gradient flux
+Each term restricts a different part of function space. By analogy with field
+pressure on boundaries, the implemented mechanism measures the "pressure"
+each loss term exerts on the parameters -- its gradient flux
 
     P_k = || grad_theta L_k ||  (optionally spectrally weighted by the
     term's local stiffness omega_k = sqrt(v^T H_k v / dim))
@@ -20,7 +17,7 @@ is balanced across terms; otherwise the stiffest term (usually the PDE
 residual, whose differential operator amplifies high frequencies) crushes
 the boundary terms, the classic PINN failure mode.
 
-:class:`CasimirPressureBalancer` measures these pressures during training
+:class:`GradientPressureBalancer` measures these pressures during training
 and adapts the weights ``w_k`` so all terms push equally:
 ``w_k ∝ mean_pressure / P_k`` (EMA-smoothed, renormalized).
 
@@ -38,7 +35,7 @@ import torch.nn as nn
 Tensor = torch.Tensor
 
 
-class CasimirPressureBalancer:
+class GradientPressureBalancer:
     """Adaptive loss weighting by radiation-pressure balance.
 
     Parameters

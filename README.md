@@ -1,6 +1,6 @@
-# casimir-opt
+# fluctuation-regularized-optimization
 
-Casimir-effect-inspired optimization experiments and utilities.
+Fluctuation-regularized optimization mechanisms and validation experiments.
 
 This repository contains a research prototype, not a published PyPI package.
 Install it from source when you want to reproduce the tests, run the
@@ -8,19 +8,28 @@ benchmarks, or inspect the implementation.
 
 ## What this is
 
-`casimir-opt` explores whether mathematical structures from Casimir/Lifshitz
-physics can be used as useful optimization mechanisms:
+`fluctuation-regularized-optimization` explores three concrete optimization
+mechanisms: Lifshitz-style swarm coupling, zero-point-smoothed gradient
+updates, and gradient-pressure loss balancing.
+The Python import remains `fluctuation_opt`.
+
+The name is intentionally descriptive. This is not "a Casimir optimizer" and
+not a claim that the code is a complete physical simulator of the Casimir
+effect. Casimir/Lifshitz physics is one source of the mathematical analogy.
 
 | Component | Use it for | Main idea |
 | --- | --- | --- |
-| `CasimirSwarm` | Derivative-free black-box search | Candidate solutions act like partially reflective mirrors coupled by short-range Lifshitz-style attraction. |
-| `CasimirOptimizer` | PyTorch training | Optimizes a zero-point-smoothed effective loss, biasing training toward flatter minima. |
-| `CasimirPressureBalancer` | PINNs and multi-term losses | Reweights loss terms by measured gradient pressure so one term does not dominate the others. |
-| `casimir_opt.core` | Physics/numerics utilities | Matsubara schedules, Lifshitz couplings, stochastic Lanczos quadrature, and zero-point-energy diagnostics. |
+| `LifshitzSwarm` | Derivative-free black-box search | Candidate solutions act like partially reflective mirrors coupled by short-range Lifshitz-style attraction. |
+| `ZeroPointOptimizer` | PyTorch training | Optimizes a zero-point-smoothed effective loss, biasing training toward flatter minima. |
+| `GradientPressureBalancer` | PINNs and multi-term losses | Reweights loss terms by measured gradient pressure so one term does not dominate the others. |
+| `fluctuation_opt.core` | Physics/numerics utilities | Matsubara schedules, Lifshitz couplings, stochastic Lanczos quadrature, and zero-point-energy diagnostics. |
 
 The strongest current evidence is for robustness and stiff/rugged problems,
 especially PINNs. This is not claimed to beat tuned standard optimizers on
 every benchmark.
+
+For the actual mechanism mappings, equations, assumptions, and failure modes,
+read [docs/mechanisms.md](docs/mechanisms.md).
 
 ## Current validation status
 
@@ -29,7 +38,8 @@ The repository includes:
 | Artifact | Location |
 | --- | --- |
 | Validation report | `REPORT.md` |
-| Paper source and compiled PDF | `paper/paper.tex`, `paper/paper.pdf` |
+| Paper source | `paper/paper.tex` |
+| Mechanism/math explanation | `docs/mechanisms.md` |
 | Unit/integration tests | `tests/` |
 | Benchmark scripts | `benchmarks/` |
 | Raw benchmark outputs and figures | `benchmarks/results/` |
@@ -39,13 +49,13 @@ The report summarizes the existing generated results. The headline results are:
 
 | Experiment | Honest result |
 | --- | --- |
-| Classic black-box functions | `CasimirSwarm` beats random search, but tuned PSO/DE reach better final precision on smooth functions. |
-| Poisson PINN | Pressure balancing prevents Adam failures; Casimir + balance gives similar accuracy with better flatness/robustness. |
-| Heat equation PINN | Plain Adam is most accurate; Casimir + balance is more robust but less accurate. |
-| Burgers equation PINN | Casimir + balance gives the best median error and best robustness in the included runs. |
-| Digits classification | Casimir ties Adam median test error and improves perturbation robustness. |
-| California housing | Casimir is less accurate than Adam but more robust. |
-| Real Casimir data fit | `CasimirSwarm` matches scipy differential evolution and recovers a gold plasma frequency near `9.21 eV`; the fitted separation offset is pinned at the `-0.60 nm` bound and should be treated as a caveat. |
+| Classic black-box functions | `LifshitzSwarm` beats random search, but tuned PSO/DE reach better final precision on smooth functions. |
+| Poisson PINN | Gradient-pressure balancing prevents Adam failures; zero-point + pressure balancing gives similar accuracy with better flatness/robustness. |
+| Heat equation PINN | Plain Adam is most accurate; zero-point + pressure balancing is more robust but less accurate. |
+| Burgers equation PINN | Zero-point + pressure balancing gives the best median error and best robustness in the included runs. |
+| Digits classification | Zero-point smoothing ties Adam median test error and improves perturbation robustness. |
+| California housing | Zero-point smoothing is less accurate than Adam but more robust. |
+| Real Casimir data fit | `LifshitzSwarm` matches scipy differential evolution and recovers a gold plasma frequency near `9.21 eV`; the fitted separation offset is pinned at the `-0.60 nm` bound and should be treated as a caveat. |
 
 ## Install from source
 
@@ -91,16 +101,20 @@ tables in `REPORT.md`.
 ## Repository map
 
 ```text
-casimir_opt/
+fluctuation_opt/
   core/              # Lifshitz, Matsubara, and spectral utilities
-  swarm.py           # CasimirSwarm black-box optimizer
-  torch_optim.py     # CasimirOptimizer PyTorch optimizer
+  swarm.py           # LifshitzSwarm black-box optimizer
+  torch_optim.py     # ZeroPointOptimizer PyTorch optimizer
   pinn.py            # PINN pressure balancer and helpers
 benchmarks/          # Reproducible experiment scripts
 benchmarks/results/  # Raw CSV/JSON results and generated figures
 tests/               # Unit and integration tests
-paper/               # Paper source and compiled PDF
+paper/               # Paper source and rebuild note
 ```
+
+The paper source was updated with the accurate project/API names. A compiled
+PDF is not tracked until it can be regenerated from the updated source with a
+local LaTeX engine.
 
 ## Scope and caveats
 

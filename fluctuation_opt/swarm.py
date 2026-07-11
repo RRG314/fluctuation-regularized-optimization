@@ -1,4 +1,4 @@
-"""CasimirSwarm: population black-box optimization via Lifshitz couplings.
+"""LifshitzSwarm: population black-box optimization via Lifshitz couplings.
 
 The physical picture
 --------------------
@@ -38,17 +38,17 @@ from typing import Callable, Dict, Optional, Sequence, Union
 
 import torch
 
-from casimir_opt.core.lifshitz import (
+from fluctuation_opt.core.lifshitz import (
     pairwise_lifshitz_forces,
     reflectivity_from_boltzmann,
     reflectivity_from_rank,
 )
-from casimir_opt.core.matsubara import QuantumAnnealingSchedule, thermal_variance
+from fluctuation_opt.core.matsubara import QuantumAnnealingSchedule, thermal_variance
 
 Tensor = torch.Tensor
 
 
-class CasimirSwarm:
+class LifshitzSwarm:
     """Lifshitz-coupled swarm optimizer (minimization).
 
     Parameters
