@@ -89,3 +89,15 @@ def test_bad_bounds_raise():
         LifshitzSwarm([(1.0, 1.0)])
     with pytest.raises(ValueError):
         LifshitzSwarm([(2.0, 1.0)])
+
+
+def test_invalid_quench_strategy_raises():
+    with pytest.raises(ValueError):
+        LifshitzSwarm([(-1.0, 1.0)], quench_strategy="nope")
+
+
+def test_pattern_quench_strategy_runs():
+    sw = LifshitzSwarm([(-5, 5)] * 3, n_particles=20, seed=0,
+                       quench_strategy="pattern")
+    res = sw.minimize(sphere, max_iter=80)
+    assert res["fun"] < 0.1

@@ -163,6 +163,10 @@ def perturbation_robustness(net, closure, sigma=3e-2, n=20, seed=0):
     return float(np.mean(incs))
 
 
+def uses_pressure_balancer(config):
+    return config in ("adam+balance", "zero_point+pressure")
+
+
 # ---------------------------------------------------------------- runner
 def run_config(problem, config, seed, device, budget):
     torch.manual_seed(seed)
@@ -170,7 +174,7 @@ def run_config(problem, config, seed, device, budget):
     net = MLP(prob.net_sizes).to(device)
 
     balancer = None
-    if config.endswith("+balance"):
+    if uses_pressure_balancer(config):
         balancer = GradientPressureBalancer(net.parameters(), n_terms=3,
                                            update_every=25)
 

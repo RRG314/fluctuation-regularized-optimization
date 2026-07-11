@@ -21,6 +21,17 @@ Use when:
 - derivative-free search is appropriate;
 - robustness matters more than machine-precision final convergence.
 
+Useful controls:
+
+- `quench_frac`: fraction of the run used for local refinement around the
+  best solution; the default is tuned for broad benchmark behavior.
+- `quench_probe_frac`: fraction of particles used as local probes during the
+  partial quench; the remaining particles keep exploring.
+- `full_quench_frac`: optional final full-population collapse; the default is
+  disabled because keeping explorers active was more reliable in benchmarks.
+- `quench_strategy="pattern"`: optional structured local probes for problems
+  where coordinate-style polishing is helpful.
+
 Minimal example:
 
 ```python
@@ -45,6 +56,11 @@ Use when:
 - differentiable training is available;
 - flatness or perturbation robustness matters;
 - matched gradient-evaluation budgets are acceptable.
+
+Useful controls:
+
+- `n_probes`: number of perturbation probes; one antithetic pair is the
+  practical default.
 
 Minimal example:
 

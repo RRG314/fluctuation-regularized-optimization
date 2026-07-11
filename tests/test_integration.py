@@ -353,3 +353,11 @@ def test_end_to_end_tiny_pinn_smoke():
     xt = torch.linspace(0, 0.5, 20).unsqueeze(1)
     rel = float(((net(xt) - torch.exp(xt)).norm() / torch.exp(xt).norm()))
     assert rel < 0.15
+
+
+def test_pde_benchmark_pressure_configs_are_labeled_correctly():
+    from benchmarks.pde_benchmark import uses_pressure_balancer
+
+    assert not uses_pressure_balancer("adam")
+    assert uses_pressure_balancer("adam+balance")
+    assert uses_pressure_balancer("zero_point+pressure")

@@ -10,14 +10,14 @@ All raw numbers, convergence curves, and figures live in `benchmarks/results/`. 
 
 ## 1. Test suite
 
-**86 tests, all passing** (`pytest tests/` — 56 pre-existing + 30 new integration tests in `tests/test_integration.py`).
+**89 tests, all passing** (`pytest tests/`).
 
 Coverage highlights:
 
 - **Physics correctness:** Newton's third law for pairwise Lifshitz forces (net force < 1e-10), force = dE/dd by central differences (rel 1e-4), inverse-square short-range law exact to 1e-6, Matsubara sum → T=0 integral convergence, polylog Li₂(1) = π²/6, `coth` branch-switch accuracy on both branches.
 - **Numerics:** Stochastic Lanczos Quadrature vs. dense eigendecomposition, Hutchinson trace reproducibility, Lanczos breakdown on rank-deficient matrices, third-order autograd derivatives.
 - **API contracts:** swarm eval accounting (`n_evals = pop × (iters+1)`), float32/1D/callback support, optimizer `state_dict` round-trip, multiple param groups, weight decay, frozen params, PINN balancer weight clamps and caching.
-- **End-to-end:** tiny PINN solving u′ = u to <1% error.
+- **End-to-end:** tiny PINN smoke test for the coupled MLP, balancer, and zero-point optimizer path.
 
 ## 2. Black-box optimization (`blackbox_benchmark.py`)
 
@@ -25,13 +25,13 @@ Five standard test functions, dimension 10, budget 40 particles × 300 iteration
 
 | Function | LifshitzSwarm (median) | PSO | DE | RandomSearch |
 |---|---|---|---|---|
-| sphere | 3.1e-06 | 5.7e-16 | 2.2e-24 | 13.4 |
-| rosenbrock | 5.33 | 4.15 | 0.038 | 7685 |
+| sphere | 1.2e-07 | 5.7e-16 | 2.2e-24 | 13.4 |
+| rosenbrock | 4.53 | 4.15 | 0.038 | 7685 |
 | rastrigin | 6.47 | 4.98 | 2.99 | 69.9 |
-| ackley | 0.033 | 1.8e-07 | 1.4e-11 | 17.2 |
-| griewank | 0.151 | 0.0996 | 0.112 | 47.1 |
+| ackley | 0.0079 | 1.8e-07 | 1.4e-11 | 17.2 |
+| griewank | 0.117 | 0.0996 | 0.112 | 47.1 |
 
-**Honest finding:** LifshitzSwarm is a competent global optimizer — 4–6 orders of magnitude better than random search everywhere, and competitive with PSO/DE on the multimodal rastrigin and griewank functions. But it does **not** beat tuned DE or PSO on raw final precision for these classic smooth benchmarks. Its zero-point noise floor (which never anneals to zero, by design) prevents the last-digit convergence that DE achieves. Its comparative value shows up in the derivative-free *physics fitting* task (§6), where all seeds land on the same answer.
+**Honest finding:** LifshitzSwarm is a competent global optimizer — many orders of magnitude better than random search everywhere, improved substantially on sphere and ackley after the partial-quench refinement change, and is now close to PSO/DE on griewank. But it does **not** beat tuned DE or PSO on raw final precision for these classic smooth benchmarks. Its zero-point noise floor and population dynamics still prevent the last-digit convergence that DE achieves. Its comparative value shows up more clearly in robust derivative-free fitting and rugged/stiff settings than in machine-precision toy functions.
 
 ## 3. Poisson PINN (`pinn_benchmark.py`)
 
@@ -39,11 +39,11 @@ Five standard test functions, dimension 10, budget 40 particles × 300 iteration
 
 | Config | rel. L2 (median) | robustness ↓ | ZPE ↓ |
 |---|---|---|---|
-| adam | **6.90 (diverged 2/3 seeds)** | 11,538 | 5,935 |
-| adam + balance | 0.0111 | 11.8 | 1,159 |
-| zero-point + pressure | 0.0123 | **8.3** | **354** |
+| adam | 6.90 (diverged 2/3 seeds) | 12,582 | 106 |
+| adam + balance | **0.0019** | 11.5 | 104 |
+| zero-point + pressure | 0.0172 | **8.45** | 1,024 |
 
-Plain Adam with uniform loss weights catastrophically fails on 2 of 3 seeds (rel L2 ≈ 7 — worse than predicting zero). The `GradientPressureBalancer` rescues it completely. Zero-point smoothing plus pressure balancing matches the balanced-Adam accuracy while finding minima that are ~3× flatter (ZPE) and more robust to weight perturbation.
+Plain Adam with uniform loss weights catastrophically fails on 2 of 3 seeds (rel L2 ≈ 7 — worse than predicting zero). The `GradientPressureBalancer` rescues it completely and is the accuracy winner in this run. Zero-point smoothing plus pressure balancing is less accurate on this Poisson setup, but gives the best perturbation robustness. Its ZPE diagnostic is not lower here, so the honest claim for this benchmark is robustness, not universal flatness by every diagnostic.
 
 ## 4. Real PDEs: heat & viscous Burgers (`pde_benchmark.py`)
 
@@ -54,10 +54,10 @@ Plain Adam with uniform loss weights catastrophically fails on 2 of 3 seeds (rel
 |---|---|---|---|
 | heat | adam | **0.0019** | 0.074 |
 | heat | adam+balance | 0.0023 | 0.052 |
-| heat | zero-point+pressure | 0.0086 | **0.039** |
-| burgers | adam | 0.256 | 1.11 |
-| burgers | adam+balance | 0.465 | 0.130 |
-| burgers | zero-point+pressure | **0.157** (best seed 0.080) | **0.083** |
+| heat | zero-point+pressure | 0.0099 | **0.042** |
+| burgers | adam | 0.285 | 1.07 |
+| burgers | adam+balance | 0.321 | 0.115 |
+| burgers | zero-point+pressure | **0.157** (best seed 0.093) | **0.086** |
 
 **Honest finding:** on the easy, smooth heat equation, plain Adam is already excellent and the zero-point optimizer's noise floor costs a little accuracy (0.9% vs. 0.2% — both are good solutions). On the hard shock-forming Burgers problem, **zero-point + pressure balancing wins outright**: lowest median error, best single run, and ~13× better perturbation robustness than plain Adam. This matches the design intent — the zero-point exploration helps most on rugged, stiff loss landscapes.
 
@@ -72,12 +72,12 @@ Real data, matched 9,000-grad-eval budget, 5 seeds each:
 |---|---|---|---|
 | digits | sgd | 0.0241 | 0.0007 |
 | digits | adam | **0.0222** | 0.0012 |
-| digits | zero-point | **0.0222** | **0.0006** |
-| housing | sgd | 0.4673 | 0.0284 |
-| housing | adam | **0.4640** | 0.0281 |
-| housing | zero-point | 0.4818 | **0.0173** |
+| digits | zero-point | **0.0222** | **0.0008** |
+| housing | sgd | 0.4698 | 0.0180 |
+| housing | adam | **0.4688** | 0.0198 |
+| housing | zero-point | 0.4860 | **0.0150** |
 
-On digits the zero-point optimizer **ties Adam exactly** (2.22% median test error) with half the perturbation sensitivity. On housing it trades ~3.8% higher RMSE for ~38% better robustness — it consistently prefers flatter minima, as the theory predicts, and the flatness sometimes (digits) but not always (housing) comes for free.
+On digits the zero-point optimizer **ties Adam exactly** (2.22% median test error) with lower perturbation sensitivity. On housing it trades ~3.7% higher RMSE for ~24% better robustness. The flatness/robustness benefit is visible, but it does not come for free on every dataset.
 
 ## 6. Real Casimir experiment data (`casimir_data_fit.py`)
 
@@ -101,8 +101,8 @@ Fit parameters: plasma frequency ω_p ∈ [6, 12] eV and separation offset Δz �
 
 **Where the fluctuation-regularized approach wins:**
 
-1. Hard, stiff PINN problems: rescues Poisson from 2/3 catastrophic Adam failures; best accuracy AND robustness on shock-forming Burgers.
-2. Flat-minimum selection: lowest ZPE and perturbation sensitivity in essentially every experiment, exactly as the zero-point-energy theory predicts.
+1. Hard, stiff PINN problems: pressure balancing rescues Poisson from 2/3 catastrophic Adam failures; zero-point + pressure gives the best accuracy and robustness on shock-forming Burgers.
+2. Perturbation robustness: zero-point variants often reduce sensitivity to parameter noise, although the ZPE diagnostic is mixed and should not be overread as universally lower.
 3. Real-data fitting: reproducible, tuning-free convergence to the physically correct answer on real experimental data.
 
 **Where it doesn't:**
@@ -113,7 +113,7 @@ Fit parameters: plasma frequency ω_p ∈ [6, 12] eV and separation offset Δz �
 **Reproducing everything:**
 
 ```bash
-pip install -e . && pytest tests/                       # 86 tests
+pip install -e . && pytest tests/                       # 89 tests
 python benchmarks/blackbox_benchmark.py --seeds 20
 python benchmarks/pinn_benchmark.py
 python benchmarks/pde_benchmark.py --pde heat

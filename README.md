@@ -67,8 +67,8 @@ The report summarizes the existing generated results. The headline results are:
 
 | Experiment | Honest result |
 | --- | --- |
-| Classic black-box functions | `LifshitzSwarm` beats random search, but tuned PSO/DE reach better final precision on smooth functions. |
-| Poisson PINN | Gradient-pressure balancing prevents Adam failures; zero-point + pressure balancing gives similar accuracy with better flatness/robustness. |
+| Classic black-box functions | `LifshitzSwarm` beats random search by large margins and is now close to PSO/DE on Griewank, but tuned PSO/DE still reach better final precision on several smooth functions. |
+| Poisson PINN | Gradient-pressure balancing prevents Adam failures and gives the best accuracy in the current run; zero-point + pressure gives the best perturbation robustness. |
 | Heat equation PINN | Plain Adam is most accurate; zero-point + pressure balancing is more robust but less accurate. |
 | Burgers equation PINN | Zero-point + pressure balancing gives the best median error and best robustness in the included runs. |
 | Digits classification | Zero-point smoothing ties Adam median test error and improves perturbation robustness. |

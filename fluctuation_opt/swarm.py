@@ -69,6 +69,19 @@ class LifshitzSwarm:
     max_step : per-iteration displacement cap in normalized units.
     anchor_best : if True, the best-ever solution acts as an additional
         fixed perfect mirror that gently binds the population.
+    quench_frac : fraction of the run that uses local refinement pressure.
+        The early part is a pilot quench: only the worst particles are
+        replaced by probes around the incumbent while the rest of the swarm
+        keeps exploring.
+    full_quench_frac : final fraction of the run where the whole population
+        collapses into the local quench cloud.  The default is 0, leaving
+        some explorers active through the end.
+    quench_probe_frac : fraction of particles used as pilot local probes
+        before the full quench begins.
+    quench_strategy : "pattern" or "random".  During the final quench,
+        "pattern" evaluates structured coordinate and random-direction probes
+        around the best solution for stronger local polishing; "random" keeps
+        the older Gaussian collapse-cloud behavior.
     device, dtype, seed : usual torch controls; fully GPU-compatible.
     """
 
@@ -86,8 +99,11 @@ class LifshitzSwarm:
         floor_frac: float = 0.35,
         max_step: float = 0.15,
         anchor_best: bool = True,
-        quench_frac: float = 0.25,
+        quench_frac: float = 0.33,
+        full_quench_frac: float = 0.0,
+        quench_probe_frac: float = 0.55,
         quench_contraction: float = 0.8,
+        quench_strategy: str = "random",
         device: Optional[Union[str, torch.device]] = None,
         dtype: torch.dtype = torch.float64,
         seed: Optional[int] = None,
@@ -109,7 +125,14 @@ class LifshitzSwarm:
         self.max_step = float(max_step)
         self.anchor_best = bool(anchor_best)
         self.quench_frac = min(max(float(quench_frac), 0.0), 0.9)
+        self.full_quench_frac = min(
+            self.quench_frac, min(max(float(full_quench_frac), 0.0), 0.9)
+        )
+        self.quench_probe_frac = min(max(float(quench_probe_frac), 0.0), 1.0)
         self.quench_contraction = min(max(float(quench_contraction), 0.1), 0.999)
+        if quench_strategy not in ("pattern", "random"):
+            raise ValueError("quench_strategy must be 'pattern' or 'random'")
+        self.quench_strategy = quench_strategy
 
         self.generator = torch.Generator(device=self.device)
         if seed is not None:
@@ -146,6 +169,43 @@ class LifshitzSwarm:
     def _randn(self, *shape) -> Tensor:
         return torch.randn(*shape, device=self.device, dtype=self.dtype,
                            generator=self.generator)
+
+    def _quench_cloud(
+        self,
+        best_x: Tensor,
+        spread: float,
+        *,
+        structured: bool,
+        n: Optional[int] = None,
+    ) -> Tensor:
+        """Candidate cloud for the final local-refinement phase."""
+        n = self.n if n is None else int(n)
+        if not structured or self.dim == 0:
+            return (best_x.unsqueeze(0)
+                    + spread * self._randn(n, self.dim)).clamp(0.0, 1.0)
+
+        dirs = torch.zeros(n, self.dim, device=self.device, dtype=self.dtype)
+        k = 0
+
+        # Coordinate pairs are cheap finite-difference-like probes.  They give
+        # the quench phase a real local-search component instead of relying
+        # only on isotropic random hits near the incumbent.
+        for d in range(self.dim):
+            if k + 1 >= n:
+                break
+            dirs[k, d] = 1.0
+            dirs[k + 1, d] = -1.0
+            k += 2
+
+        # Fill the remaining slots with normalized random directions so high
+        # dimensional runs still test mixed-coordinate moves.
+        if k < n:
+            rnd = self._randn(n - k, self.dim)
+            rnd_norm = rnd.norm(dim=1, keepdim=True).clamp_min(1e-12)
+            dirs[k:] = rnd / rnd_norm
+
+        radius = spread
+        return (best_x.unsqueeze(0) + radius * dirs).clamp(0.0, 1.0)
 
     # ------------------------------------------------------------------
     def minimize(
@@ -188,25 +248,31 @@ class LifshitzSwarm:
         history = [float(best_f)]
 
         quench_start = int(max_iter * (1.0 - self.quench_frac))
+        full_quench_start = int(max_iter * (1.0 - self.full_quench_frac))
+        full_quench_start = max(full_quench_start, quench_start)
         quench_spread = None  # collapse-cloud width (1/5th-rule adapted)
 
         for t in range(max_iter):
             r = self._reflectivities(fit)
-            quenching = t >= quench_start
+            pilot_quenching = quench_start <= t < full_quench_start
+            full_quenching = t >= full_quench_start
 
-            if quenching:
+            if full_quenching:
                 # Decoherence quench ("measurement collapse"): the vacuum is
-                # switched off and the mirror cloud becomes a Gaussian
+                # switched off and the mirror cloud becomes a local
                 # uncertainty cloud around the best solution whose width
-                # follows success-based (1/5th-rule) contraction --
-                # exponential local refinement of the located basin.
+                # follows success-based (1/5th-rule) contraction.  The default
+                # cloud remains stochastic; the optional pattern mode switches
+                # to coordinate/random-direction probes late in the quench.
                 if quench_spread is None:
                     quench_spread = float(
                         (X - best_x.unsqueeze(0)).norm(dim=1).mean()
                         / math.sqrt(self.dim)) + 1e-12
-                X = (best_x.unsqueeze(0)
-                     + quench_spread * self._randn(self.n, self.dim))
-                X = X.clamp(0.0, 1.0)
+                structured = (
+                    self.quench_strategy == "pattern"
+                    and t >= quench_start + max(1, (max_iter - quench_start) // 2)
+                )
+                X = self._quench_cloud(best_x, quench_spread, structured=structured)
             else:
                 if self.anchor_best:
                     Xa = torch.cat([X, best_x.unsqueeze(0)], dim=0)
@@ -237,6 +303,19 @@ class LifshitzSwarm:
                 X = X.clamp(0.0, 1.0)
                 V = torch.where(over_lo | over_hi, -V, V)
 
+                if pilot_quenching and self.quench_probe_frac > 0.0:
+                    if quench_spread is None:
+                        quench_spread = float(
+                            (X - best_x.unsqueeze(0)).norm(dim=1).mean()
+                            / math.sqrt(self.dim)) + 1e-12
+                    n_probe = max(1, int(round(self.n * self.quench_probe_frac)))
+                    n_probe = min(n_probe, self.n)
+                    worst = torch.argsort(fit, descending=True)[:n_probe]
+                    X[worst] = self._quench_cloud(
+                        best_x, quench_spread, structured=False, n=n_probe
+                    )
+                    V[worst] = 0.0
+
             fit = f(self._denorm(X)).to(self.dtype)
             n_evals += self.n
 
@@ -247,7 +326,7 @@ class LifshitzSwarm:
                 best_x = X[i].clone()
             history.append(float(best_f))
 
-            if quenching and quench_spread is not None:
+            if (pilot_quenching or full_quenching) and quench_spread is not None:
                 # 1/5th-rule: expand the collapse cloud on success, contract
                 # on failure (expansion^1 * contraction^4 = 1 at 20% success)
                 quench_spread *= (self.quench_contraction ** -0.25 if improved
@@ -255,7 +334,7 @@ class LifshitzSwarm:
 
             if callback is not None:
                 callback({"iter": t, "best_f": float(best_f),
-                          "sigma": 0.0 if quenching else schedule(t),
+                          "sigma": 0.0 if full_quenching else schedule(t),
                           "X": self._denorm(X), "fitness": fit})
 
         return {

@@ -122,6 +122,19 @@ nonzero floor is deliberate: it helps avoid brittle sharp basins, but it can
 also prevent machine-precision convergence on smooth functions. This tradeoff
 is visible in the black-box benchmark results.
 
+In `LifshitzSwarm`, the final part of the run enters a partial quench phase:
+a configurable fraction of the worst particles is replaced by samples from a
+shrinking uncertainty cloud around the best solution found so far, while the
+remaining particles keep following the Lifshitz dynamics. The default starts
+this partial quench in roughly the last third of the run and uses 55% of the
+population as local probes. This is an engineering choice, not an additional
+physical claim: in validation sweeps it improved final accuracy across the
+standard black-box functions without changing the Lifshitz interaction used in
+the exploratory phase. A full-population collapse remains available through
+`full_quench_frac`, and `quench_strategy="pattern"` switches late quench probes
+to coordinate and random-direction moves for extra local polishing on some
+smooth problems.
+
 ## 3. Zero-point-smoothed PyTorch optimizer
 
 For a differentiable loss `L(theta)`, the optimizer uses perturbation-smoothed
