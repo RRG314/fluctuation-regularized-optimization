@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest a scoped improvement to the existing project.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or research problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - LifshitzSwarm
+        - ZeroPointOptimizer
+        - GradientPressureBalancer
+        - Benchmarks
+        - Documentation
+        - Packaging/CI
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: How should this be validated?
+      description: Tests, benchmark commands, or documentation evidence.
+    validations:
+      required: true

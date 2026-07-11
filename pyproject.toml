@@ -27,6 +27,12 @@ dependencies = [
     "numpy>=1.24",
 ]
 
+[project.urls]
+Homepage = "https://github.com/RRG314/fluctuation-regularized-optimization"
+Repository = "https://github.com/RRG314/fluctuation-regularized-optimization"
+Issues = "https://github.com/RRG314/fluctuation-regularized-optimization/issues"
+Documentation = "https://github.com/RRG314/fluctuation-regularized-optimization/blob/main/README.md"
+
 [project.optional-dependencies]
 bench = ["scipy>=1.10", "matplotlib>=3.7", "scikit-learn>=1.3"]
 test = ["pytest>=7.0"]

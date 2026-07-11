@@ -1,0 +1,44 @@
+name: Research validation or benchmark issue
+description: Discuss benchmark reproduction, result changes, or mechanism evidence.
+title: "[Validation]: "
+labels: ["research", "reproducibility"]
+body:
+  - type: textarea
+    id: claim
+    attributes:
+      label: Claim or result under discussion
+      description: Which result, table, figure, or mechanism are you discussing?
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command used
+      value: |
+        ```bash
+
+        ```
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python, PyTorch, hardware, and seed count.
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed result
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected or reported result
+  - type: textarea
+    id: files
+    attributes:
+      label: Files affected
+      description: List result files, figures, or docs that may need updating.

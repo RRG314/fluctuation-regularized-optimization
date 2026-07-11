@@ -1,6 +1,12 @@
 # fluctuation-regularized-optimization
 
-Fluctuation-regularized optimization mechanisms and validation experiments.
+[![tests](https://github.com/RRG314/fluctuation-regularized-optimization/actions/workflows/tests.yml/badge.svg)](https://github.com/RRG314/fluctuation-regularized-optimization/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](pyproject.toml)
+
+Research code for fluctuation-regularized optimization: Lifshitz-style swarm
+search, zero-point-smoothed PyTorch optimization, and gradient-pressure
+balancing for PINNs and other multi-term losses.
 
 This repository contains a research prototype, not a published PyPI package.
 Install it from source when you want to reproduce the tests, run the
@@ -31,6 +37,17 @@ every benchmark.
 For the actual mechanism mappings, equations, assumptions, and failure modes,
 read [docs/mechanisms.md](docs/mechanisms.md).
 
+## Quick links
+
+- [Mechanisms and math](docs/mechanisms.md)
+- [Public API](docs/api.md)
+- [Reproducibility guide](docs/reproducibility.md)
+- [Benchmark report](REPORT.md)
+- [Contributing](CONTRIBUTING.md)
+- [Release checklist](docs/release.md)
+- [Roadmap](ROADMAP.md)
+- [Changelog](CHANGELOG.md)
+
 ## Current validation status
 
 The repository includes:
@@ -44,6 +61,7 @@ The repository includes:
 | Benchmark scripts | `benchmarks/` |
 | Raw benchmark outputs and figures | `benchmarks/results/` |
 | Quickstart example | `examples/quickstart.py` |
+| Contributor/community docs | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md` |
 
 The report summarizes the existing generated results. The headline results are:
 
@@ -79,6 +97,7 @@ python -m pip install -e .[test]
 ```bash
 pytest
 python examples/quickstart.py
+python -m build --wheel
 ```
 
 ## Reproduce benchmark artifacts
@@ -126,3 +145,17 @@ local LaTeX engine.
   the deliberate zero-point noise floor is a disadvantage.
 - The included results should be treated as reproducible experiments, not as
   proof of universal optimizer superiority.
+
+## Contributing
+
+Contributions are welcome when they are scoped, reproducible, and aligned with
+the mechanism-based naming. Start with [CONTRIBUTING.md](CONTRIBUTING.md).
+
+For bugs, feature requests, and benchmark reproduction questions, use the
+GitHub issue templates. Pull requests should include tests, docs, or benchmark
+evidence appropriate to the change.
+
+## Citation
+
+Citation metadata is provided in [CITATION.cff](CITATION.cff). If you use this
+repository, cite the repository and describe the exact commit or release used.
